@@ -1,0 +1,14 @@
+{
+  "name":"Clinovyra EMR",
+  "short_name":"Clinovyra",
+  "description":"Expediente clínico y prescripción médica local-first, cifrada y offline",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f3f5f7",
+  "theme_color":"#0753b7",
+  "icons":[
+    {"src":"icons/clinovyra.png","sizes":"1254x1254","type":"image/png","purpose":"any"}
+  ]
+}
+
