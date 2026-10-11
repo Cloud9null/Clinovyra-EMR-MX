@@ -83,6 +83,6 @@ test('native printing uses the system printer and the web keeps its print dialog
   const source=fs.readFileSync(path.join(__dirname,'../native-print.js'),'utf8');
   let name='',webCalls=0;
   const native={Capacitor:{isNativePlatform:()=>true,registerPlugin(id){assert.equal(id,'Printer');return {printWebView:async options=>{name=options.name}}}},print(){throw new Error('unexpected browser print')}};
-  vm.runInNewContext(source,{window:native});await native.ClinovyraPrint.print('Receta manual');assert.equal(name,'Receta manual');
-  const web={print(){webCalls++}};vm.runInNewContext(source,{window:web});await web.ClinovyraPrint.print('Receta manual');assert.equal(webCalls,1);
+  vm.runInNewContext(source,{window:native});await native.ClinovyraPrint.print('Receta electrónica');assert.equal(name,'Receta electrónica');
+  const web={print(){webCalls++}};vm.runInNewContext(source,{window:web});await web.ClinovyraPrint.print('Receta electrónica');assert.equal(webCalls,1);
 });

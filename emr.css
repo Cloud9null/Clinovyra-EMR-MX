@@ -47,11 +47,8 @@
 #screen-home .metric-grid{margin:13px 0 0}
 #screen-home .metric-card{box-shadow:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
 #screen-home .metric-card strong{font-variant-numeric:tabular-nums}
-.manual-template-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 24px;background:linear-gradient(110deg,color-mix(in srgb,var(--secondary) 10%,var(--panel)),var(--panel));border-color:color-mix(in srgb,var(--secondary) 30%,var(--line))}
-.manual-template-card h3{margin:5px 0 0;font-size:1.19rem}.manual-template-card p{max-width:620px;margin:8px 0 0;font-size:.82rem}
-.manual-template-card .btn{width:auto;flex:none;max-width:100%}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--secondary);outline-offset:3px}
-@media(max-width:760px){.hero-panel{grid-template-columns:1fr;gap:18px}.hero-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-actions .btn{white-space:normal;min-height:48px}.hero-actions .btn:first-child{grid-column:1/-1}.home-section-heading>span{display:none}.home-task-grid{grid-template-columns:1fr 1fr}.home-task:last-child{grid-column:1/-1}.manual-template-card{align-items:stretch;flex-direction:column}.manual-template-card .btn{width:100%}}
+@media(max-width:760px){.hero-panel{grid-template-columns:1fr;gap:18px}.hero-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-actions .btn{white-space:normal;min-height:48px}.hero-actions .btn:first-child{grid-column:1/-1}.home-section-heading>span{display:none}.home-task-grid{grid-template-columns:1fr 1fr}.home-task:last-child{grid-column:1/-1}}
 @media(max-width:480px){.hero-panel{padding:25px 20px}.hero-panel h2{font-size:2rem}.hero-panel p{font-size:.85rem}.hero-actions{grid-template-columns:1fr}.hero-actions .btn:first-child{grid-column:auto}.home-task-grid{gap:9px}.home-task{grid-template-columns:1fr;gap:3px;min-height:115px;padding:13px}.home-task-icon{grid-row:auto;width:36px;height:36px;margin-bottom:3px}.home-task:last-child{grid-column:auto}#screen-home .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-home .metric-card:last-child{grid-column:auto}#screen-home .metric-card{padding:14px}#screen-home .metric-card strong{font-size:1.45rem}}
 @media(prefers-reduced-motion:reduce){.home-task,#screen-home .metric-card{transition:none}.home-task:hover,.metric-card:hover{transform:none}}
 @media print{.home-task-grid,.home-section-heading{display:none!important}}

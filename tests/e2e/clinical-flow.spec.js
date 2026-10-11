@@ -64,75 +64,10 @@ test('direct prescription remains available without creating an encounter',async
   await expect(page.locator('#encounterCount')).toHaveText('0');
 });
 
-test('manual PDF reserves once, opens real PDF and reuses original folios after retry',async({page})=>{
-  await page.addInitScript(()=>{window.__opened=[];window.open=(url)=>{window.__opened.push(url);return {closed:false}}});
+test('commercial shell has no manual prescription print flow',async({page})=>{
   await page.goto('/?e2e=1');
-  await page.locator('#setupPin').fill('synthetic-manual-123');await page.locator('#setupPin2').fill('synthetic-manual-123');await page.getByRole('button',{name:'Crear bóveda cifrada'}).click();
-  await page.locator('#manualTemplateBtn').click();await expect(page.locator('#manualTemplateDialog')).toBeVisible();
-  await page.locator('#manualPrintCount').fill('3');await page.locator('#manualPrintCount').dispatchEvent('change');
-  await expect(page.locator('#manualTemplatePreview .manual-letter-page')).toHaveCount(2);
-  const originals=await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents();
-  await page.evaluate(()=>{const build=window.ClinovyraManualPDF.build;window.ClinovyraManualPDF={...window.ClinovyraManualPDF,build:options=>{window.__manualPdfPages=options.pagesHtml;return build(options)}}});
-  await page.locator('#printManualTemplateBtn').click();await expect(page.locator('#openManualPdfBtn')).toBeVisible();
-  const sameLayout=await page.evaluate(()=>window.__manualPdfPages.every((html,i)=>{const sheet=document.createElement('div');sheet.innerHTML=html;return sheet.firstElementChild.outerHTML===document.querySelectorAll('#manualTemplatePreview .manual-letter-page')[i].outerHTML}));
-  expect(sameLayout).toBe(true);
-  expect(originals).toHaveLength(3);expect(new Set(originals).size).toBe(3);
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  await expect(page.locator('#manualBatchHistory')).toContainText('impresión no confirmada');
-  await page.locator('#printManualTemplateBtn').click();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  await page.locator('#openManualPdfBtn').click();
-  const pdf=await page.evaluate(async()=>{const response=await fetch(window.__opened[0]);return {type:response.headers.get('content-type'),start:(await response.text()).slice(0,8)}});
-  expect(pdf.type).toContain('application/pdf');expect(pdf.start).toContain('%PDF-1.4');
-  await page.locator('#cancelManualTemplateBtn').click();
-  await page.locator('#manualTemplateBtn').click();
-  await page.locator('#regenerateManualFoliosBtn').click();
-  expect(await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents()).not.toEqual(originals);
-  await page.locator('#manualBatchHistory [data-reprint-batch]').first().click();
-  expect(await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents()).toEqual(originals);
-  await page.locator('#openManualPdfBtn').click();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  expect(await page.evaluate(()=>window.__opened.length)).toBe(2);
-  page.once('dialog',d=>d.accept());
-  await page.locator('#manualBatchHistory [data-archive-batch]').first().click();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(0);
-  await page.locator('#regenerateManualFoliosBtn').click();
-  expect(await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents()).not.toEqual(originals);
-});
-
-test('iPhone-sized preview fits and a blocked PDF window triggers download without new batch',async({page})=>{
-  await page.addInitScript(()=>{window.open=()=>null});
-  await page.setViewportSize({width:390,height:844});
-  await page.goto('/?e2e=1');
-  await page.locator('#setupPin').fill('synthetic-print-123');await page.locator('#setupPin2').fill('synthetic-print-123');
-  await page.getByRole('button',{name:'Crear bóveda cifrada'}).click();
-  await page.locator('#manualTemplateBtn').click();
-  const fit=await page.locator('#manualTemplatePreview').evaluate(el=>({scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,scale:parseFloat(getComputedStyle(el).getPropertyValue('--manual-preview-scale'))}));
-  expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth+1);
-  expect(fit.scale).toBeLessThan(.5);
-  await page.locator('#printManualTemplateBtn').click();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  const download=page.waitForEvent('download');
-  await page.locator('#openManualPdfBtn').click();expect((await download).suggestedFilename()).toMatch(/Clinovyra-BATCH-.*\.pdf/);
-  await page.locator('#printManualTemplateBtn').click();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-});
-
-test('failed PDF capture reserves once and retry preserves the original folios',async({page})=>{
-  await page.goto('/?e2e=1');
-  await page.locator('#setupPin').fill('synthetic-retry-123');await page.locator('#setupPin2').fill('synthetic-retry-123');
-  await page.getByRole('button',{name:'Crear bóveda cifrada'}).click();
-  await page.locator('#manualTemplateBtn').click();
-  const folios=await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents();
-  await page.evaluate(()=>{const original=window.ClinovyraManualPDF.build;let first=true;window.ClinovyraManualPDF={...window.ClinovyraManualPDF,build:(options)=>{if(first){first=false;return Promise.reject(new Error('Fallo sintético de captura'))}return original(options)}}});
-  await page.locator('#printManualTemplateBtn').click();
-  await expect(page.locator('#manualPdfStatus')).toContainText('Fallo sintético de captura');
-  await expect(page.locator('#openManualPdfBtn')).toBeHidden();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  await page.locator('#printManualTemplateBtn').click();
-  await expect(page.locator('#openManualPdfBtn')).toBeVisible();
-  await expect(page.locator('#manualBatchHistory .manual-batch-row')).toHaveCount(1);
-  expect(await page.locator('#manualTemplatePreview .manual-folio-chip strong').allTextContents()).toEqual(folios);
+  await expect(page.locator('#manualTemplateBtn, #manualTemplateDialog')).toHaveCount(0);
+  expect(await page.evaluate(()=>typeof window.ClinovyraManualPDF)).toBe('undefined');
 });
 
 test('mobile dock follows a finger swipe and theme palettes are separated',async({page})=>{

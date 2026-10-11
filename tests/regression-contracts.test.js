@@ -13,7 +13,7 @@ test('legacy prescription contracts remain present',()=>{
   assert.match(read('index.html'),/8\.5 × 5\.5/);
   assert.match(read('styles.css'),/width:8\.5in;height:5\.5in/);
   assert.match(app,/https:\/\/cedulaprofesional\.sep\.gob\.mx\/cedula\/presidencia\/indexAvanzada\.action/);
-  assert.match(app,/function renderManualLetterPages\(/);
+  assert.doesNotMatch(app,/function renderManualLetterPages\(/);
   assert.match(app,/function voidRecipe\(/);
 });
 

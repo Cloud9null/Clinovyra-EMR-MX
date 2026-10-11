@@ -40,18 +40,6 @@ const logoStyles=[
  {id:'crest',name:'Escudo elegante',desc:'Insignia institucional refinada'},
  {id:'minimal',name:'Minimal serif',desc:'Línea limpia y sobria'}
 ];
-const manualPrintThemes=[
- {id:'burgundyGold',name:'Burgundy Gold',primary:'#6B2639',secondary:'#B89A62',soft:'#F7F0F1'},
- {id:'navyChampagne',name:'Navy Champagne',primary:'#173A5E',secondary:'#C0A46B',soft:'#EEF3F7'},
- {id:'emeraldBrass',name:'Emerald Brass',primary:'#185646',secondary:'#AF915B',soft:'#EEF5F2'},
- {id:'graphiteSilver',name:'Graphite Silver',primary:'#37434B',secondary:'#AAB4BA',soft:'#F1F3F4'},
- {id:'plumRose',name:'Plum Rose',primary:'#5D2F50',secondary:'#C392A6',soft:'#F7F0F5'},
- {id:'tealCopper',name:'Teal Copper',primary:'#17646A',secondary:'#B87850',soft:'#EDF5F5'},
- {id:'indigoAntique',name:'Indigo Antique',primary:'#3E457A',secondary:'#BDA566',soft:'#F1F2F8'},
- {id:'terracottaIvory',name:'Terracotta Ivory',primary:'#8A4F3D',secondary:'#C3A078',soft:'#F8F1ED'}
-];
-state.manualPrintFolios=[];
-state.manualPrintCount=2;
 function b64(bytes){let s='';for(const b of new Uint8Array(bytes))s+=String.fromCharCode(b);return btoa(s)}
 function unb64(s){const x=atob(s),a=new Uint8Array(x.length);for(let i=0;i<x.length;i++)a[i]=x.charCodeAt(i);return a}
 function b64url(bytes){return b64(bytes).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
@@ -99,7 +87,7 @@ async function prepareEncryptedDocuments(){
   for(const doc of docs){if(doc.encryptedContent)continue;if(doc.dataUrl){doc.encryptedContent=await window.RxSecureSync.encryptDocument(state.vaultKey,dataUrlBytes(doc.dataUrl),doc);delete doc.dataUrl;doc.storage='local_e2ee_v1';doc.updatedAt=doc.updatedAt||doc.createdAt||new Date().toISOString();changed=true}}
   if(changed)await saveVault();
 }
-function privateVaultPayload(){return {format:'rx-vault-private-payload-v1',profile:state.vault.profile||{},signing:state.vault.signing||{},settings:state.vault.settings||{},manualFolioLedger:state.vault.manualFolioLedger||[],manualPrintLog:state.vault.manualPrintLog||[],createdAt:new Date().toISOString()}}
+function privateVaultPayload(){return {format:'rx-vault-private-payload-v1',profile:state.vault.profile||{},signing:state.vault.signing||{},settings:state.vault.settings||{},createdAt:new Date().toISOString()}}
 async function syncVaultSecret(){
   const recovery=state.vault?.settings?.recovery;if(!recovery?.enabled||!state.cloudUser||!window.RxSecureSync)return;
   const currentKeyId=await window.RxSecureSync.keyId(state.vaultKey);if(recovery.keyId!==currentKeyId)throw new Error('La llave local no coincide con la recuperación activa. Recupera la bóveda antes de sincronizar datos privados.');
@@ -107,11 +95,6 @@ async function syncVaultSecret(){
   try{remoteEnvelope=await window.RxCloud.downloadVaultSecret()}catch(error){if(error.status!==404)throw error}
   if(remoteEnvelope){
     const remote=await window.RxSecureSync.decryptSecretBundle(state.vaultKey,remoteEnvelope,state.cloudUser.id);
-    const logs=new Map([...(remote.manualPrintLog||[]),...(state.vault.manualPrintLog||[])].filter(b=>b?.batchId).map(b=>[b.batchId,b]));
-    for(const b of remote.manualPrintLog||[]){const current=logs.get(b.batchId);if(b.archivedAt&&current&&!current.archivedAt)current.archivedAt=b.archivedAt}
-    state.vault.manualPrintLog=Array.from(logs.values());
-    state.vault.manualFolioLedger=Array.from(new Set([...(remote.manualFolioLedger||[]),...(state.vault.manualFolioLedger||[]),...state.vault.manualPrintLog.flatMap(b=>b.folios||[])]));
-    await saveVault();
   }
   const secret=await window.RxSecureSync.encryptSecretBundle(state.vaultKey,privateVaultPayload(),state.cloudUser.id);await window.RxCloud.uploadVaultSecret(secret);
 }
@@ -128,7 +111,7 @@ async function recoverCloudVault(e){
     const user=await window.RxCloud.signIn(email,password),access=await window.RxCloud.authorizeUser(),envelope=await window.RxCloud.loadRecoveryEnvelope(),vaultKey=await window.RxSecureSync.unwrapRecoveryEnvelope(envelope,code,user.id),secretEnvelope=await window.RxCloud.downloadVaultSecret(),secret=await window.RxSecureSync.decryptSecretBundle(vaultKey,secretEnvelope,user.id),pinBox=await wrapVaultKeyForPin(vaultKey,newPin);
     if(secret?.format!=='rx-vault-private-payload-v1'||!secret?.signing?.privateJwk)throw new Error('El respaldo privado no contiene la identidad de firma.');
     state.accessGranted=true;state.accessRole=access.role;state.accessOwnerHash=await ownerIdHash(user.id);
-    state.meta={id:'setup',version:4,...pinBox,biometric:null,vaultInstanceId:b64url(randomBytes(24)),ownerIdHash:state.accessOwnerHash,deviceAuthorizedAt:new Date().toISOString(),createdAt:new Date().toISOString(),recoveredAt:new Date().toISOString()};state.vaultKey=vaultKey;state.vault={profile:secret.profile||{},patients:[],recipes:[],manualFolioLedger:secret.manualFolioLedger||[],manualPrintLog:secret.manualPrintLog||[],settings:{...(secret.settings||{}),recovery:{enabled:true,keyId:envelope.keyId,updatedAt:envelope.createdAt||new Date().toISOString()}},signing:secret.signing};
+    state.meta={id:'setup',version:4,...pinBox,biometric:null,vaultInstanceId:b64url(randomBytes(24)),ownerIdHash:state.accessOwnerHash,deviceAuthorizedAt:new Date().toISOString(),createdAt:new Date().toISOString(),recoveredAt:new Date().toISOString()};state.vaultKey=vaultKey;state.vault={profile:secret.profile||{},patients:[],recipes:[],settings:{...(secret.settings||{}),recovery:{enabled:true,keyId:envelope.keyId,updatedAt:envelope.createdAt||new Date().toISOString()}},signing:secret.signing};
     await dbPut('meta',state.meta);await saveVault();$('#recoveryPassword').value=$('#recoveryCode').value=$('#recoveryNewPin').value=$('#recoveryNewPin2').value='';await afterUnlock();toast('Bóveda e identidad recuperadas; sincronización en curso');
   }catch(err){setStatus($('#recoverySetupStatus'),err.message||'No se pudo recuperar la bóveda. No se modificaron datos locales.')}
 }
@@ -438,7 +421,7 @@ function bindDockSwipe(){
   dock.addEventListener('pointerup',finish);dock.addEventListener('pointercancel',finish);
 }
 function navigate(name){if(!state.vault)return;closeNavigation();state.screen=name;$$('.screen').forEach(s=>s.classList.toggle('active',s.id===`screen-${name}`));$$('#primaryNav button[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===name));updateDock(name);const titles={home:'Inicio',patients:'Pacientes',emr:'Expediente clínico',encounter:'Consulta',quicknote:'Nota clínica rápida',rx:'Nueva receta',history:'Recetas',settings:'Ajustes'};$('#topSubtitle').textContent=titles[name]||'';if(name==='patients')renderPatients();if(name==='history')renderHistory();if(name==='emr'){const record=$('#patientRecord');record?.classList.add('hidden');$('#screen-emr')?.classList.remove('record-open');window.RxEMR?.renderDashboard?.()}if(name==='rx')renderRxPatientOptions();if(name==='settings'){renderSettings();refreshSessions()}window.scrollTo({top:0,behavior:'smooth'});}
-function renderAll(){const commercial=window.ClinovyraPolicy?.isCommercial?.()||false;$('#manualTemplateBtn')?.classList.toggle('hidden',commercial);$('#directRxHomeBtn')?.classList.toggle('hidden',commercial);renderCounts();renderPatients();renderRxPatientOptions();renderHistory();renderSettings();renderThemeGrid();renderLogoGrid();window.RxEMR?.renderDashboard?.();if(!$('#medicationList').children.length)addMedication();$('#biometricUnlockBtn').classList.toggle('hidden',!state.meta?.biometric||nativeBiometricUnsupported());}
+function renderAll(){const commercial=window.ClinovyraPolicy?.isCommercial?.()||false;$('#directRxHomeBtn')?.classList.toggle('hidden',commercial);renderCounts();renderPatients();renderRxPatientOptions();renderHistory();renderSettings();renderThemeGrid();renderLogoGrid();window.RxEMR?.renderDashboard?.();if(!$('#medicationList').children.length)addMedication();$('#biometricUnlockBtn').classList.toggle('hidden',!state.meta?.biometric||nativeBiometricUnsupported());}
 function renderCounts(){$('#patientCount').textContent=state.vault.patients.filter(p=>!p.archived).length;$('#recipeCount').textContent=state.vault.recipes.length;window.RxEMR?.renderDashboard?.()}
 function patientSubtitle(p){const age=ageYears(p.dob);const dobTxt=p.dob?displayDob(p.dob):'F.N. no disponible';const sx=sexCode(p.sex)||'—';return `${dobTxt} · ${age===null?'Edad no disponible':age+' años'} · ${sx}${p.allergies?' · Alergias: '+p.allergies:''}`}
 function renderPatients(filter=''){
@@ -544,103 +527,15 @@ async function openRecipe(id){
   $('#duplicateRecipeBtn').addEventListener('click',()=>duplicateRecipe(rec));
   $('#voidRecipeBtn')?.addEventListener('click',()=>voidRecipe(rec));
 }
-function manualLogoMarkup(style='monogram'){
-  if(style==='crest')return '<div class="rx-logo-inner crest"><div class="rx-logo-shield">✚</div><div class="rx-logo-type"><span>Rx</span><small>CLINIC</small></div></div>';
-  if(style==='minimal')return '<div class="rx-logo-inner minimal"><div class="rx-logo-mark thin">Rx</div><div class="rx-logo-type"><span>Dr</span><small>PRESCRIPTION</small></div></div>';
-  return '<div class="rx-logo-inner monogram"><div class="rx-logo-mark"><span class="rx-logo-cross">✚</span></div><div class="rx-logo-type"><span>Rx</span><small>MEDICAL</small></div></div>';
-}
-function manualPrintTheme(){const id=state.vault?.settings?.manualPrintTheme||'burgundyGold';return manualPrintThemes.find(t=>t.id===id)||manualPrintThemes[0]}
-function manualKnownFolios(){const s=new Set(state.vault?.manualFolioLedger||[]);for(const batch of (state.vault?.manualPrintLog||[])){for(const f of (batch?.folios||[]))if(f)s.add(String(f));}for(const f of (state.manualPrintFolios||[]))if(f)s.add(String(f));return s}
-function manualFolio(exclude=new Set()){for(let attempt=0;attempt<30;attempt++){const r=crypto.randomUUID().replace(/-/g,'').toUpperCase();const f=`RM-${r.slice(0,8)}-${r.slice(8,16)}-${r.slice(16,24)}-${r.slice(24,32)}`;if(!exclude.has(f))return f;}throw new Error('No se pudo generar un folio único. Intenta nuevamente.')}
-function clampManualCount(v){const n=Math.floor(Number(v)||2);return Math.min(100,Math.max(1,n))}
-function generateManualFolios(count=state.manualPrintCount||2){count=clampManualCount(count);state.manualPrintCount=count;const used=manualKnownFolios(),out=[];while(out.length<count){const f=manualFolio(used);used.add(f);out.push(f)}state.manualPrintFolios=out;return out}
-function renderManualStyleGrid(){const g=$('#manualStyleGrid');if(!g)return;const current=state.vault?.settings?.manualPrintTheme||'burgundyGold';g.innerHTML=manualPrintThemes.map(t=>`<button type="button" class="manual-style-card ${current===t.id?'active':''}" data-manual-theme="${t.id}"><span class="manual-style-swatch" style="--ms1:${t.primary};--ms2:${t.secondary};--mss:${t.soft}"></span><strong>${esc(t.name)}</strong></button>`).join('');g.querySelectorAll('[data-manual-theme]').forEach(b=>b.addEventListener('click',async()=>{state.vault.settings.manualPrintTheme=b.dataset.manualTheme;await saveVault();renderManualStyleGrid();renderManualPreview();}));}
-function renderManualRxHalf(folio){
-  const profile=state.vault.profile||{},theme=manualPrintTheme(),logoStyle=state.vault.settings.logoStyle||'monogram';
-  const licenseQr=RxQR.svg('https://cedulaprofesional.sep.gob.mx/cedula/presidencia/indexAvanzada.action');
-  const contact=[profile.phone,profile.email].filter(Boolean).join(' · ');
-  const lines=Array.from({length:6},()=>'<div class="manual-write-line"></div>').join('');
-  return `<article class="manual-rx-half" style="--rxp:${esc(theme.primary)};--rxs:${esc(theme.secondary)};--rxsoft:${esc(theme.soft)}"><div class="manual-theme-band"></div><div class="manual-folio-watermark">${esc(folio)}</div><header class="manual-rx-header"><div class="rx-doc-brand"><div class="rx-logo ${esc(logoStyle)}">${manualLogoMarkup(logoStyle)}<span class="rx-logo-accent"></span></div><div class="rx-doc-copy"><div class="rx-ribbon">PRESCRIPCIÓN MÉDICA</div><h3>${esc(profile.name||'Médico')}</h3><p>${esc(profile.role||'Medicina General')}</p><p>Cédula profesional: ${esc(profile.license||'—')}${profile.university?' · '+esc(profile.university):''}</p>${profile.address?`<p>${esc(profile.address)}</p>`:''}${contact?`<p>${esc(contact)}</p>`:''}</div></div><div class="manual-rx-meta"><div class="manual-meta-title">RECETA MÉDICA</div><div class="manual-folio-chip"><small>FOLIO</small><strong>${esc(folio)}</strong></div><div class="manual-date-modern"><small>FECHA</small><div class="manual-date-box"><span></span><b>DÍA</b></div><i>/</i><div class="manual-date-box"><span></span><b>MES</b></div><i>/</i><div class="manual-date-box year"><span></span><b>AÑO</b></div></div></div></header><section class="manual-patient-box"><div class="manual-field patient"><small>PACIENTE</small><span></span></div><div class="manual-field dob"><small>F. NACIMIENTO</small><span></span></div><div class="manual-field age"><small>EDAD</small><span></span></div><div class="manual-field sex"><small>SEXO</small><span></span></div><div class="manual-field weight"><small>PESO</small><span></span></div><div class="manual-field allergies"><small>ALERGIAS</small><span></span></div><div class="manual-field vital"><small>TA</small><span></span></div><div class="manual-field vital"><small>FC</small><span></span></div><div class="manual-field vital"><small>FR</small><span></span></div><div class="manual-field vital"><small>TEMP</small><span></span></div><div class="manual-field vital"><small>SpO₂</small><span></span></div></section><section class="manual-rx-body"><div class="manual-prescription"><div class="manual-rx-title"><span class="rx-symbol">℞</span><small>INDICACIONES / PRESCRIPCIÓN</small></div>${lines}<div class="manual-microfolio">ORIGINAL · ${esc(folio)} · Documento manual numerado</div></div><aside class="manual-rx-side"><div class="manual-license-qr"><div class="manual-qr-frame">${licenseQr}</div><span>Verificar cédula profesional</span></div><div class="manual-signature"><small>FIRMA DEL MÉDICO</small><div class="manual-signature-space"></div><div class="manual-signature-rule"></div><strong>${esc(profile.name||'Firma médica')}</strong><span>Céd. Prof. ${esc(profile.license||'—')}</span><em>Folio ${esc(folio)}</em></div></aside></section></article>`;
-}
-function renderManualLetterPage(f1,f2=null,pageNo=1,totalPages=1){return `<section class="manual-letter-page" data-page="${pageNo}"><div class="manual-half-wrap">${renderManualRxHalf(f1)}</div><div class="manual-half-wrap ${f2?'':'manual-empty-half'}">${f2?renderManualRxHalf(f2):''}</div><div class="manual-cut-line"><span>CORTE</span></div><div class="manual-page-index">Hoja ${pageNo} de ${totalPages}</div></section>`}
-function manualPagesForBatch(batch){
-  const profile=state.vault.profile,theme=state.vault.settings.manualPrintTheme,logo=state.vault.settings.logoStyle;
+async function printRecipe(rec){
+  if(!navigator.onLine||!window.RxCloud?.configured?.()){toast('La impresión de recetas requiere conexión al servicio comercial.');return}
   try{
-    state.vault.profile=batch.profile||profile;
-    state.vault.settings.manualPrintTheme=batch.theme||theme;
-    state.vault.settings.logoStyle=batch.logoStyle||logo;
-    const total=Math.ceil(batch.folios.length/2);
-    return Array.from({length:total},(_,p)=>renderManualLetterPage(batch.folios[p*2],batch.folios[p*2+1]||null,p+1,total));
-  }finally{state.vault.profile=profile;state.vault.settings.manualPrintTheme=theme;state.vault.settings.logoStyle=logo}
+    await validateCloudAccess();
+    if(!rec.seal?.cloudRegistered)throw new Error('La receta aún no está confirmada por el servidor comercial.');
+    $('#printArea').innerHTML=renderRxSheet(rec);
+    await window.ClinovyraPrint.print(`Clinovyra - ${rec.id}`);
+  }catch(error){toast(error.message||'No se pudo verificar la receta para imprimir.')}
 }
-function renderManualLetterPages(){const folios=(state.manualPrintFolios?.length===state.manualPrintCount)?state.manualPrintFolios:generateManualFolios(state.manualPrintCount||2);const total=Math.ceil(folios.length/2);let out='';for(let p=0;p<total;p++)out+=renderManualLetterPage(folios[p*2],folios[p*2+1]||null,p+1,total);return out}
-function fitManualPreview(){const el=$('#manualTemplatePreview');if(!el||!el.clientWidth)return;const scale=Math.min(.72,Math.max(.25,(el.clientWidth-28)/816));el.style.setProperty('--manual-preview-scale',String(scale));el.style.setProperty('--manual-preview-width',`${816*scale}px`);el.style.setProperty('--manual-preview-height',`${1056*scale}px`)}
-function renderManualPreview(){const el=$('#manualTemplatePreview');if(el){const folios=(state.manualPrintFolios?.length===state.manualPrintCount)?state.manualPrintFolios:generateManualFolios(state.manualPrintCount||2),batch=(state.vault.manualPrintLog||[]).find(b=>b.batchId===state.manualActiveBatchId&&!b.archivedAt&&JSON.stringify(b.folios)===JSON.stringify(folios));const pages=batch?manualPagesForBatch(batch):manualPagesForBatch({folios});el.innerHTML=pages.map(html=>`<div class="manual-preview-page-shell">${html}</div>`).join('');fitManualPreview()}const q=$('#manualPrintCount');if(q)q.value=String(state.manualPrintCount||2);const summary=$('#manualBatchSummary');if(summary){const pages=Math.ceil((state.manualPrintCount||2)/2);summary.textContent=`${state.manualPrintCount||2} receta(s) · ${pages} hoja(s) carta · ${state.manualPrintFolios?.length||0} folio(s) únicos`}}
-function renderManualBatchHistory(){
-  const root=$('#manualBatchHistory');if(!root)return;
-  const batches=(state.vault?.manualPrintLog||[]).filter(b=>!b.archivedAt).slice(-20).reverse();
-  root.innerHTML=batches.length?batches.map(b=>`<div class="manual-batch-row"><div><strong>${esc(b.batchId||'Lote anterior')}</strong><small>${esc(new Date(b.createdAt).toLocaleString('es-MX'))} · ${Number(b.recipeCount)||b.folios?.length||0} recetas · folios reservados; impresión no confirmada</small></div><div class="manual-batch-actions"><button class="btn secondary small" type="button" data-reprint-batch="${esc(b.batchId||'')}">Reabrir PDF / folios</button><button class="btn ghost small" type="button" data-archive-batch="${esc(b.batchId||'')}">Quitar de la lista</button></div></div>`).join(''):'<p class="micro">Aún no hay lotes preparados.</p>';
-  root.querySelectorAll('[data-reprint-batch]').forEach(button=>button.addEventListener('click',async()=>{
-    const batch=(state.vault.manualPrintLog||[]).find(b=>b.batchId===button.dataset.reprintBatch);
-    if(!batch?.folios?.length)return toast('No se encontraron los folios de este lote');
-    state.manualPrintCount=batch.folios.length;state.manualPrintFolios=[...batch.folios];state.manualReprintBatchId=batch.batchId;state.manualActiveBatchId=batch.batchId;
-    state.vault.settings.manualPrintTheme=batch.theme||'burgundyGold';renderManualStyleGrid();renderManualPreview();setManualPdfActions(false);
-    await prepareManualPdf(batch);
-  }));
-  root.querySelectorAll('[data-archive-batch]').forEach(button=>button.addEventListener('click',async()=>{
-    const batch=(state.vault.manualPrintLog||[]).find(b=>b.batchId===button.dataset.archiveBatch);if(!batch)return;
-    if(!confirm(`¿Quitar ${batch.batchId} de la lista? Hazlo solo si ya imprimiste o guardaste el PDF. Sus folios seguirán reservados y no podrás reabrir este lote desde la lista.`))return;
-    batch.archivedAt=new Date().toISOString();if(state.manualActiveBatchId===batch.batchId){state.manualActiveBatchId=null;state.manualPdfBlob=null;state.manualPdfToken=(state.manualPdfToken||0)+1}
-    await saveVault();renderManualBatchHistory();setManualPdfActions(false);queueCloudSync();toast('Lote oculto; folios conservados en el registro.');
-  }));
-}
-function openManualTemplate(){
-  if(window.ClinovyraPolicy?.isCommercial?.())return toast('El talonario manual solo está disponible en la edición personal.');
-  state.vault.settings.manualPrintTheme=state.vault.settings.manualPrintTheme||'burgundyGold';
-  state.manualPrintCount=clampManualCount(state.manualPrintCount||2);
-  state.manualReprintBatchId=null;state.manualActiveBatchId=null;state.manualPdfBlob=null;state.manualPdfToken=(state.manualPdfToken||0)+1;generateManualFolios(state.manualPrintCount);renderManualStyleGrid();renderManualPreview();renderManualBatchHistory();setManualPdfActions(false);$('#manualTemplateDialog').showModal();fitManualPreview();
-}
-function regenerateManualFolios(){state.manualReprintBatchId=null;state.manualActiveBatchId=null;state.manualPdfBlob=null;state.manualPdfToken=(state.manualPdfToken||0)+1;generateManualFolios(state.manualPrintCount||2);renderManualPreview();setManualPdfActions(false);toast(`Se generaron ${state.manualPrintFolios.length} folios nuevos`)}
-function changeManualPrintCount(){const q=clampManualCount($('#manualPrintCount')?.value||2);if(q===state.manualPrintCount&&state.manualPrintFolios?.length===q)return;state.manualPrintCount=q;state.manualReprintBatchId=null;state.manualActiveBatchId=null;state.manualPdfBlob=null;state.manualPdfToken=(state.manualPdfToken||0)+1;generateManualFolios(q);renderManualPreview();setManualPdfActions(false)}
-function clearManualPrintMode(){document.getElementById('manualPrintPageStyle')?.remove();$('#printArea').classList.remove('manual-print-area')}
-function setManualPdfActions(ready){$('#openManualPdfBtn')?.classList.toggle('hidden',!ready);$('#shareManualPdfBtn')?.classList.toggle('hidden',!ready);$('#manualPdfStatus').textContent=ready?'PDF listo. Ábrelo para imprimir o guardar en Archivos. iOS no informa si terminó la impresión.':'Primero prepara el PDF y reserva los folios en la bóveda.'}
-async function prepareManualPdf(batch){
-  const token=state.manualPdfToken=(state.manualPdfToken||0)+1;
-  state.manualPdfBlob=null;
-  $('#manualPdfStatus').textContent='Generando el PDF con el mismo diseño de la vista previa…';
-  $('#printManualTemplateBtn').disabled=true;
-  try{
-    const pagesHtml=manualPagesForBatch(batch);
-    const blob=await window.ClinovyraManualPDF.build({pagesHtml});
-    if(token!==state.manualPdfToken)return;
-    state.manualPdfBlob=blob;state.manualPdfBatchId=batch.batchId;setManualPdfActions(true);
-    toast('PDF preparado con el diseño original y los mismos folios.');
-  }catch(err){
-    if(token!==state.manualPdfToken)return;
-    setManualPdfActions(false);
-    $('#manualPdfStatus').textContent=`No se pudo generar el PDF: ${err.message} Los folios están reservados. Pulsa “Preparar PDF y folios” para reintentar este mismo lote.`;
-  }finally{if(token===state.manualPdfToken)$('#printManualTemplateBtn').disabled=false}
-}
-async function printManualTemplate(){
-  if(window.ClinovyraPolicy?.isCommercial?.())return toast('El talonario manual no está disponible en esta edición.');
-  const count=clampManualCount($('#manualPrintCount')?.value||state.manualPrintCount||2);state.manualPrintCount=count;
-  if(!state.manualPrintFolios||state.manualPrintFolios.length!==count)generateManualFolios(count);
-  const folios=[...state.manualPrintFolios];
-  if(state.manualActiveBatchId){const existing=(state.vault.manualPrintLog||[]).find(b=>b.batchId===state.manualActiveBatchId);if(existing&&!existing.archivedAt&&JSON.stringify(existing.folios)===JSON.stringify(folios)){if(state.manualPdfBlob&&state.manualPdfBatchId===existing.batchId){setManualPdfActions(true);return toast('Este lote ya está preparado; los folios no cambian.')}return prepareManualPdf(existing)}}
-  const batchId='BATCH-'+crypto.randomUUID().slice(0,8).toUpperCase();
-  const batch={batchId,folios,recipeCount:count,sheetCount:Math.ceil(count/2),createdAt:new Date().toISOString(),theme:state.vault.settings.manualPrintTheme||'burgundyGold',logoStyle:state.vault.settings.logoStyle||'monogram',status:'reserved',profile:{...state.vault.profile},reprintOf:state.manualReprintBatchId||null};
-  // Reserve before exposing a printable file. A failed save cannot release a new serial.
-  const oldLedger=state.vault.manualFolioLedger,oldLog=state.vault.manualPrintLog;
-  state.vault.manualFolioLedger=Array.from(new Set([...(oldLedger||[]),...(oldLog||[]).flatMap(b=>b.folios||[]),...folios]));
-  state.vault.manualPrintLog=[...(oldLog||[]),batch];
-  try{
-    await saveVault();state.manualActiveBatchId=batchId;state.manualReprintBatchId=batchId;renderManualBatchHistory();setManualPdfActions(false);queueCloudSync();await prepareManualPdf(batch);
-  }catch(err){state.vault.manualFolioLedger=oldLedger;state.vault.manualPrintLog=oldLog;toast(`No se pudo guardar el lote: ${err.message}`)}
-}
-function activeManualPdf(){const batch=(state.vault.manualPrintLog||[]).find(b=>b.batchId===state.manualActiveBatchId&&!b.archivedAt);if(!batch||!state.manualPdfBlob||state.manualPdfBatchId!==batch.batchId)throw new Error('Prepara primero el PDF de este lote.');return {batch,blob:state.manualPdfBlob}}
-function openManualPdf(){try{const {batch,blob}=activeManualPdf(),url=URL.createObjectURL(blob),win=window.open(url,'_blank');if(!win){const a=document.createElement('a');a.href=url;a.download=`Clinovyra-${batch.batchId}.pdf`;document.body.appendChild(a);a.click();a.remove();toast('iOS bloqueó la pestaña; revisa la descarga de PDF.')}else toast('PDF abierto. Usa Compartir → Imprimir o Guardar en Archivos.');setTimeout(()=>URL.revokeObjectURL(url),120000)}catch(err){toast(`No se pudo abrir el PDF: ${err.message}`)}}
-async function shareManualPdf(){try{const {batch,blob}=activeManualPdf(),file=new File([blob],`Clinovyra-${batch.batchId}.pdf`,{type:'application/pdf'});if(!navigator.canShare?.({files:[file]}))return openManualPdf();await navigator.share({files:[file],title:'Talonario Clinovyra'});}catch(err){if(err.name!=='AbortError')toast(`No se pudo compartir el PDF: ${err.message}`)}}
-function printRecipe(rec){clearManualPrintMode();$('#printArea').innerHTML=renderRxSheet(rec);try{Promise.resolve(window.ClinovyraPrint.print(`Clinovyra - ${rec.id}`)).catch(e=>toast(e.message))}catch(e){toast(e.message)}}
 function duplicateRecipe(rec){navigate('rx');$('#rxPatient').value=rec.patient.id;updateSelectedPatient();$('#rxGeneral').value=rec.general||'';$('#medicationList').innerHTML='';state.medSeq=0;rec.medications.forEach(m=>addMedication(m));toast('Receta copiada como borrador nuevo')}
 async function voidRecipe(rec){const reason=prompt('Motivo breve de anulación (opcional):','');if(reason===null)return;rec.status='void';rec.voidedAt=new Date().toISOString();rec.voidReason=reason.trim();await saveVault();renderHistory();queueCloudSync();toast('Receta anulada; el registro original se conserva')}
 function renderRecoveryState(){const enabled=!!state.vault?.settings?.recovery?.enabled,button=$('#enableRecoveryBtn'),status=$('#recoveryStatus');if(button)button.textContent=enabled?'Generar nuevo código':'Configurar recuperación';if(status)status.textContent=enabled?'Recuperación cifrada activa. El código no se guarda en este dispositivo; consérvalo fuera de línea.':'Todavía no configurada. Sin el respaldo o código, una bóveda perdida no puede recuperarse.'}
@@ -648,10 +543,10 @@ function renderSettings(){const p=state.vault.profile,bio=state.meta.biometric,p
 async function saveProfile(e){e.preventDefault();Object.assign(state.vault.profile,{name:$('#profileName').value.trim(),role:$('#profileRole').value.trim(),license:$('#profileLicense').value.trim(),university:$('#profileUniversity').value.trim(),facilityType:$('#profileFacilityType').value.trim(),facilityName:$('#profileFacilityName').value.trim(),address:$('#profileAddress').value.trim(),phone:$('#profilePhone').value.trim(),email:$('#profileEmail').value.trim()});await saveVault();queueCloudSync();toast('Perfil médico guardado')}
 async function saveProfileSignature(){const data=state.profilePad.data();if(!data)return toast('Dibuja primero tu firma.');state.vault.profile.signature=data;await saveVault();queueCloudSync();toast('Firma guardada localmente')}
 async function updateStorageStatus(){const el=$('#storageStatus');try{const e=await navigator.storage?.estimate?.();const persistent=await navigator.storage?.persisted?.();if(e){const used=(e.usage/1024/1024).toFixed(1),quota=(e.quota/1024/1024).toFixed(0);el.textContent=`Uso aproximado: ${used} MB de ${quota} MB. Persistencia del navegador: ${persistent?'sí':'no/indeterminada'}.`}else el.textContent='IndexedDB cifrado en este navegador. Exporta respaldos periódicos.';}catch{el.textContent='IndexedDB cifrado en este navegador. Exporta respaldos periódicos.'}}
-async function exportBackup(){const payload=await dbGet('vault','payload'),meta=JSON.parse(JSON.stringify(state.meta));meta.biometric=null;const backup={format:'rx-offline-v2-backup',createdAt:new Date().toISOString(),meta,payload};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=`rx-offline-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Respaldo cifrado exportado')}
+async function exportBackup(){const payload=await dbGet('vault','payload'),meta=JSON.parse(JSON.stringify(state.meta));meta.biometric=null;const backup={format:'clinovyra-commercial-v1-backup',createdAt:new Date().toISOString(),meta,payload};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=`clinovyra-commercial-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Respaldo cifrado exportado')}
 async function importBackup(file){
   const obj=JSON.parse(await file.text());
-  if(obj.format!=='rx-offline-v2-backup'||!obj.meta?.salt||!obj.meta?.wrappedVaultKey?.iv||!obj.meta?.wrappedVaultKey?.data||!obj.payload?.iv||!obj.payload?.data)throw new Error('Archivo de respaldo no válido.');
+  if(obj.format!=='clinovyra-commercial-v1-backup'||!obj.meta?.salt||!obj.meta?.wrappedVaultKey?.iv||!obj.meta?.wrappedVaultKey?.data||!obj.payload?.iv||!obj.payload?.data)throw new Error('Archivo de respaldo no válido.');
   const owner=state.meta?.ownerIdHash||state.accessOwnerHash;
   if(obj.meta.ownerIdHash&&owner&&obj.meta.ownerIdHash!==owner)throw new Error('Este respaldo pertenece a otra cuenta. No se importó.');
   const pin=prompt('Escribe el PIN o contraseña del respaldo para comprobarlo antes de reemplazar esta bóveda:');
@@ -665,10 +560,10 @@ async function importBackup(file){
   }catch{throw new Error('El PIN del respaldo es incorrecto o el archivo está dañado. No se modificó la bóveda actual.');}
   if(!restored?.signing?.privateJwk||!Array.isArray(restored.patients)||!Array.isArray(restored.recipes))throw new Error('El respaldo no contiene una bóveda válida. No se modificó la bóveda actual.');
   if(!confirm('Respaldo verificado. Esto reemplazará la bóveda local de este dispositivo. ¿Continuar?'))return;
-  // An older backup must not roll back the irreversible manual folio register.
-  restored.manualFolioLedger=Array.from(new Set([...(restored.manualFolioLedger||[]),...(restored.manualPrintLog||[]).flatMap(b=>b.folios||[]),...(state.vault?.manualFolioLedger||[]),...(state.vault?.manualPrintLog||[]).flatMap(b=>b.folios||[])]));
-  const knownBatches=new Map([...(restored.manualPrintLog||[]),...(state.vault?.manualPrintLog||[])].filter(b=>b?.batchId).map(b=>[b.batchId,b]));
-  restored.manualPrintLog=Array.from(knownBatches.values());
+  // Legacy personal backups are never imported into the commercial edition.
+  delete restored.manualFolioLedger;
+  delete restored.manualPrintLog;
+  if(restored.settings)delete restored.settings.manualPrintTheme;
   const prior=state.meta?.biometric;
   const meta={...obj.meta,id:'setup',biometric:null,vaultInstanceId:b64url(randomBytes(24)),ownerIdHash:owner||null,deviceAuthorizedAt:new Date().toISOString(),version:Math.max(4,Number(obj.meta.version||0))};
   const payload={id:'payload',...await encryptRaw(vaultKey,enc.encode(JSON.stringify(restored))),updatedAt:new Date().toISOString()};
@@ -683,7 +578,7 @@ function bindEvents(){
   $('#unlockForm').addEventListener('submit',async e=>{e.preventDefault();setStatus($('#unlockMsg'),'Desbloqueando…');try{await unlockWithPin($('#unlockPin').value);$('#unlockPin').value='';await afterUnlock();setStatus($('#unlockMsg'),'')}catch{setStatus($('#unlockMsg'),'PIN/contraseña incorrecta o bóveda dañada.')}});
   $('#biometricUnlockBtn').addEventListener('click',async()=>{setStatus($('#unlockMsg'),'Solicitando verificación del dispositivo…');try{await unlockBiometric();await afterUnlock();setStatus($('#unlockMsg'),'')}catch(err){setStatus($('#unlockMsg'),biometricError(err))}});
   $('#lockBtn').addEventListener('click',lock);$$('[data-nav]').forEach(b=>b.addEventListener('click',()=>b.dataset.nav==='rx'?window.RxEMR?.directPrescription?.():navigate(b.dataset.nav)));
-  $('#manualTemplateBtn')?.addEventListener('click',openManualTemplate);$('#quickNoteHomeBtn')?.addEventListener('click',()=>navigate('quicknote'));$('#closeManualTemplateBtn')?.addEventListener('click',()=>$('#manualTemplateDialog').close());$('#cancelManualTemplateBtn')?.addEventListener('click',()=>$('#manualTemplateDialog').close());$('#regenerateManualFoliosBtn')?.addEventListener('click',regenerateManualFolios);$('#manualPrintCount')?.addEventListener('change',changeManualPrintCount);$('#manualPrintCount')?.addEventListener('input',()=>{const n=clampManualCount($('#manualPrintCount').value);const s=$('#manualBatchSummary');if(s)s.textContent=`${n} receta(s) · ${Math.ceil(n/2)} hoja(s) carta · se generarán ${n} folios únicos`;});$('#printManualTemplateBtn')?.addEventListener('click',printManualTemplate);$('#openManualPdfBtn')?.addEventListener('click',openManualPdf);$('#shareManualPdfBtn')?.addEventListener('click',shareManualPdf);window.addEventListener('resize',()=>{if($('#manualTemplateDialog')?.open)fitManualPreview()});
+  $('#quickNoteHomeBtn')?.addEventListener('click',()=>navigate('quicknote'));
   $('#newPatientBtn').addEventListener('click',()=>openPatientDialog());$('#quickPatientBtn').addEventListener('click',()=>openPatientDialog());$('#cancelPatientBtn').addEventListener('click',()=>$('#patientDialog').close());$('#patientDob').addEventListener('input',updatePatientWeightField);$('#patientForm').addEventListener('submit',savePatientFromForm);$('#patientSearch').addEventListener('input',e=>renderPatients(e.target.value));
   $('#rxPatient').addEventListener('change',updateSelectedPatient);$('#addMedBtn').addEventListener('click',()=>addMedication());$('#resetRxBtn').addEventListener('click',resetRx);$$('input[name="signatureMode"]').forEach(r=>r.addEventListener('change',()=>$('#freshSignatureWrap').classList.toggle('hidden',$('input[name="signatureMode"]:checked').value!=='fresh')));$('#clearRxSignature').addEventListener('click',()=>state.rxPad.clear());
   $('#rxForm').addEventListener('submit',async e=>{e.preventDefault();try{state.pendingEmit=await buildRecipeDraft();renderPrescriptionReview(state.pendingEmit);$('#confirmDialog').showModal();setStatus($('#rxMsg'),'')}catch(err){setStatus($('#rxMsg'),err.message)}});$('#cancelEmitBtn').addEventListener('click',()=>{state.pendingEmit=null;state.pendingReview=null;$('#confirmDialog').close()});$('#confirmEmitBtn').addEventListener('click',()=>issueRecipe().catch(err=>{toast(err.message);$('#confirmDialog').close()}));
