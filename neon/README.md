@@ -2,7 +2,9 @@
 
 Proyecto nuevo: `clinovyra-emr-mx-development` (`still-tooth-53394839`), base `clinovyra_commercial`, organización actual `Medical_1`. Fue creado el 11 de octubre de 2026 en la cuenta Neon conectada. No comparte base, Auth, Storage ni credenciales con los otros proyectos de esa organización. Comparte la administración de la organización: si se desea separar también propietarios, facturación y permisos administrativos, habrá que trasladar/provisionar un proyecto en una organización comercial exclusiva.
 
-Se aplicó `migrations/0001_commercial_foundation.sql` al proyecto de desarrollo. Ocho tablas tienen RLS `ENABLE` y `FORCE`, cero políticas y ningún permiso público: el acceso está cerrado. Se crearon únicamente tablas, claves, índices y restricciones; no se copiaron usuarios, datos personales ni datos clínicos. No existe aún conexión del frontend ni Auth comercial aprovisionada. Nunca se debe poner una cadena de conexión Postgres en `index.html`, `supabase-config.js` o variables `VITE_` públicas.
+Se aplicó `migrations/0001_commercial_foundation.sql` al proyecto de desarrollo. Ocho tablas tienen RLS `ENABLE` y `FORCE`, cero políticas y ningún permiso público: el acceso está cerrado. Se crearon únicamente tablas, claves, índices y restricciones; no se copiaron usuarios, datos personales ni datos clínicos. El bucket `clinical-documents-development` está vacío y es privado.
+
+Se inspeccionó Neon Auth (Better Auth), pero su configuración inicial permitía registro por correo sin verificación. Se desactivó la integración sin borrar sus datos antes de admitir cuentas; se configurará junto con la API y controles de acceso. El frontend no tiene conexión a Neon. Nunca se debe poner una cadena de conexión Postgres en `index.html`, `supabase-config.js` o variables `VITE_` públicas.
 
 ## Siguiente integración
 
