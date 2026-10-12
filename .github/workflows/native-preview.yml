@@ -28,7 +28,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
       - run: npm ci --no-audit --no-fund
         working-directory: native
       - run: npm run android:init
