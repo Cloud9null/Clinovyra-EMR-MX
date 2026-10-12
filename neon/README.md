@@ -15,3 +15,9 @@ Se inspeccionó Neon Auth (Better Auth), pero su configuración inicial permití
 5. Registrar proveedor de cobro, verificar webhooks en servidor y vincular el estado de suscripción a la organización. Neon no cobra ni limita el número de suscripciones de Clinovyra por sí solo.
 
 **Solo desarrollo con datos sintéticos.** Este esquema inicial no autoriza altas ni atención clínica.
+
+## Organización exclusiva Clinovyra
+
+La conexión actual sólo permite listar organizaciones y crear proyectos; no ofrece crear una organización ni trasladar proyectos. La cuenta conectada muestra únicamente `Medical_1`. Tras crear en Neon Console la organización **Clinovyra**, usar su `org_id` para crear `clinovyra-emr-mx-development` dentro de ella. Aplicar en orden las migraciones `0001`, `0002`, `0003` a un proyecto nuevo y vacío. Verificar en la nueva organización con datos sintéticos y después retirar el proyecto de desarrollo anterior siguiendo una revisión explícita. No se migrarán usuarios, pacientes, notas, recetas, almacenamiento ni claves del proyecto personal ni del proyecto provisional. La migración 0002 preparada en la rama temporal del proyecto provisional sigue sin aplicarse a main.
+
+`0003_trial_and_plans.sql` sólo crea la estructura de planes Lite/Premium y fechas de prueba. No habilita altas, pagos ni IA. La duración del demo, elegibilidad de una sola prueba, pagos y webhooks requieren servicio confiable e instrucciones de producto. `api/commercial-access.js` especifica decisiones de autorización para futuras rutas; no sustituye Auth ni políticas RLS reales.

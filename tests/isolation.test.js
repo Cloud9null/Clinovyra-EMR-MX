@@ -14,7 +14,7 @@ test('unconfigured commercial API refuses clinical POST without any outbound req
     await handler({method:'POST',headers:{authorization:'Bearer synthetic-token'},body:{keyPoints:'Sintético'}},res);
     assert.equal(res.statusCode,503);
     assert.equal(calls.length,0);
-    assert.match(res.data.error,/comercial no configurado/);
+    assert.match(res.data.error,/IA Premium no habilitada/);
   }finally{global.fetch=previous}
 });
 

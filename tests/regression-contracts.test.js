@@ -40,8 +40,8 @@ test('PWA precaches every new EMR runtime asset',()=>{
 
 
 
-test('clinical AI endpoint is authenticated, no-store and never exposes the provider key',()=>{
-  const api=read('api/clinical-note.js'),emr=read('emr.js');assert.match(api,/\/auth\/v1\/user/);assert.match(api,/store:false/);assert.match(api,/process\.env\.OPENAI_API_KEY/);assert.match(api,/x-vercel-oidc-token/);assert.match(api,/process\.env\.VERCEL_OIDC_TOKEN/);assert.match(api,/ai-gateway\.vercel\.sh/);assert.match(api,/disallowPromptTraining:true/);assert.doesNotMatch(emr,/OPENAI_API_KEY|VERCEL_OIDC_TOKEN/);assert.match(emr,/identifiersSent:false/);
+test('commercial AI endpoint fails closed without provider credentials',()=>{
+  const api=read('api/clinical-note.js'),emr=read('emr.js');assert.match(api,/Cache-Control','no-store/);assert.match(api,/statusCode=req\.method==='POST'\?503/);assert.doesNotMatch(api,/auth\/v1\/user|ai-gateway\.vercel\.sh|OPENAI_API_KEY/);assert.doesNotMatch(emr,/OPENAI_API_KEY|VERCEL_OIDC_TOKEN/);assert.match(emr,/identifiersSent:false/);
 });
 
 test('document payloads upload only encrypted content and cloud metadata strips ciphertext',()=>{
@@ -65,11 +65,11 @@ test('historical prescription medication records retain their link metadata',()=
 
 
 
-test('application and clinical AI both enforce the server-side owner allowlist',()=>{
+test('legacy client allowlist cannot open commercial clinical AI',()=>{
   const app=read('app.js'),cloud=read('cloud.js'),api=read('api/clinical-note.js'),html=read('index.html');
   assert.match(cloud,/async function authorizeUser\(/);assert.match(cloud,/app_authorized_users/);
   assert.match(app,/async function resolveInitialAccess\(/);assert.match(app,/ownerIdHash/);
-  assert.match(api,/async function authorize\(/);assert.match(api,/app_authorized_users/);
+  assert.match(api,/IA Premium no habilitada/);assert.doesNotMatch(api,/app_authorized_users/);
   assert.match(html,/ACCESO RESTRINGIDO/);assert.doesNotMatch(html,/registrarse|crear cuenta/i);
   assert.match(app,/\['localhost','127\.0\.0\.1'\][\s\S]+get\('e2e'\)==='1'/);
 });
