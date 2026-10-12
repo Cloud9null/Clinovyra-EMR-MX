@@ -14,14 +14,14 @@ Se omitieron instrucciones históricas y notas de despliegue personales, workflo
 - Sin universidad ni domicilio de médico precargados; campos de perfil vacíos.
 - Almacenamiento IndexedDB, sesión local, servicio biométrico y caché con nombres nuevos; Windows tiene perfil de aplicación separado y host local distinto.
 - Capacitor y Electron usan el identificador temporal de vista previa `mx.clinovyra.emr.preview`. CI genera artefactos de prueba sin firma de distribución.
-- Se creó el proyecto Vercel independiente `clinovyra-emr-mx` (`prj_hVfrkhpoiGmQHTvi2xmxHcF1OgSK`) sin conexión Git ni deployment. No se modificó la producción personal.
+- Un informe anterior registró `clinovyra-emr-mx` (`prj_hVfrkhpoiGmQHTvi2xmxHcF1OgSK`) sin Git ni deployment. La cuenta Vercel personal conectada ahora no lo encuentra en el equipo consultado; no se atribuye una URL a Clinovyra. No se modificó la producción personal.
 
-## Etapa actual: Neon y landing
+## Etapa actual: Neon, landing y app web
 
-- Neon `clinovyra-emr-mx-development` (`still-tooth-53394839`) en la organización existente `Medical_1`: ocho tablas vacías, RLS forzada, cero políticas y ningún permiso público. El bucket privado de documentos está vacío. Auth se inspeccionó y quedó desactivada porque el valor inicial admitía registros sin verificar; no hay API comercial conectada. La organización comparte administradores con otros proyectos Neon.
+- El proyecto `still-tooth-53394839` de `Medical_1` fue provisional. El proyecto definitivo de desarrollo `lively-credit-41837058` está en `CLINOVYRA`: ocho tablas vacías en main, RLS forzada, cero políticas ni grants públicos, migraciones `0001`–`0003`, bucket privado y Neon Auth provisionado. Auth permite por defecto registro sin correo verificado; no hay frontend conectado. Ver `neon/README.md`.
 - La app aún usa contratos Supabase para Auth, sincronización, documentos, recuperación y API; el cliente sigue sin credenciales y falla cerrado. Migrar a Neon requiere rehacer esos contratos y verificar aislamiento real.
 - Se retiraron interfaz, PDF, folios manuales, estilos, precaché y pruebas del talonario. El formato de respaldos se distingue de la edición personal; el formato anterior se rechaza. La impresión de recetas electrónicas requiere red, backend configurado, acceso validado y confirmación comercial, que todavía no se emite.
-- `marketing/` contiene una landing conceptual autónoma y responsiva sin captura de cuentas ni pacientes, separada de la aplicación y sin despliegue público.
+- `landing/` contiene la landing Next.js informativa y `web/` contiene el nuevo portal web en preparación, ambos del mismo repositorio. `marketing/` es una versión conceptual anterior. Ninguno recibe datos clínicos reales.
 
 ## Bloqueos antes de cuentas o atención clínica
 
