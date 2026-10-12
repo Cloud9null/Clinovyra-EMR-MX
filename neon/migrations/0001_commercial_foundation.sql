@@ -95,13 +95,20 @@ CREATE INDEX audit_org_idx ON clinovyra.audit_events (organization_id, occurred_
 
 REVOKE ALL ON SCHEMA clinovyra FROM PUBLIC;
 REVOKE ALL ON ALL TABLES IN SCHEMA clinovyra FROM PUBLIC;
-DO $$
-DECLARE tablename text;
-BEGIN
-  FOREACH tablename IN ARRAY ARRAY['organizations','memberships','patients','encounters','clinical_notes','prescriptions','subscription_accounts','audit_events']
-  LOOP
-    EXECUTE format('ALTER TABLE clinovyra.%I ENABLE ROW LEVEL SECURITY', tablename);
-    EXECUTE format('ALTER TABLE clinovyra.%I FORCE ROW LEVEL SECURITY', tablename);
-  END LOOP;
-END $$;
+ALTER TABLE clinovyra.organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.organizations FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.memberships FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.patients FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.encounters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.encounters FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.clinical_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.clinical_notes FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.prescriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.prescriptions FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.subscription_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.subscription_accounts FORCE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clinovyra.audit_events FORCE ROW LEVEL SECURITY;
 -- No policies and no grants: deny by default. Add scoped policies only after server auth tests.
