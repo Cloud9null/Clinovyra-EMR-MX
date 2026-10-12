@@ -74,7 +74,7 @@ jobs:
         working-directory: native
       - run: npm run ios:init
         working-directory: native
-      - run: xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - run: xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
         working-directory: native/ios/App
       - run: ditto -c -k --sequesterRsrc --keepParent native/ios/App/build/Build/Products/Debug-iphonesimulator/App.app clinovyra-ios-simulator.zip
       - uses: actions/upload-artifact@v4
