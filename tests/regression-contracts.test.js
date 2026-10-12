@@ -9,7 +9,7 @@ test('legacy prescription contracts remain present',()=>{
   const app=read('app.js');
   assert.match(app,/function renderHistory\(/);
   assert.match(app,/function canonicalPayload\(recipe\)/);
-  assert.match(app,/ECDSA-P256-SHA256/);
+  assert.match(read('emr.js'),/ECDSA-P256-SHA256/);
   assert.match(read('index.html'),/8\.5 × 5\.5/);
   assert.match(read('styles.css'),/width:8\.5in;height:5\.5in/);
   assert.match(app,/https:\/\/cedulaprofesional\.sep\.gob\.mx\/cedula\/presidencia\/indexAvanzada\.action/);
@@ -24,18 +24,12 @@ test('prescription relation is external to the signed canonical payload',()=>{
   assert.match(emr,/prescriptionLinks\.push\(link\)/);
 });
 
-test('direct prescriptions remain searchable and can be linked retrospectively without resigning',()=>{
+test('commercial routes omit direct and retrospective prescriptions',()=>{
   const app=read('app.js'),emr=read('emr.js'),html=read('index.html');
-  assert.match(app,/patientName\+' '\+id/);
+  assert.doesNotMatch(html,/id="encounterSourceRx"|id="directRxHomeBtn"/);
+  assert.doesNotMatch(emr,/recordDirectRx|prescription.linked_retroactively/);
   assert.match(app,/openRecipePatientBtn/);
-  assert.match(html,/id="encounterSourceRx"/);
-  assert.match(emr,/unlinkedPatientPrescriptions\(patientId\)/);
-  assert.match(emr,/sourceRx\.patient\?\.id!==patientId/);
-  assert.match(emr,/prescriptionLinks\.some\(l=>l\.rxId===sourceRxId\)/);
-  assert.match(emr,/prescription\.linked_retroactively/);
-  assert.match(emr,/Recetas sin nota/);
   assert.match(emr,/data-open-recipe/);
-  assert.match(emr,/data-link-recipe/);
 });
 
 test('PWA precaches every new EMR runtime asset',()=>{
@@ -56,7 +50,7 @@ test('document payloads upload only encrypted content and cloud metadata strips 
 
 
 
-test('every issued prescription can populate longitudinal medications without requiring a note',()=>{
+test('historical prescription medication records retain their link metadata',()=>{
   const source=read('emr.js');
   assert.match(source,/sourceRxId:rec\.id/);
   assert.match(source,/encounterId:context\?\.encounterId\|\|null/);

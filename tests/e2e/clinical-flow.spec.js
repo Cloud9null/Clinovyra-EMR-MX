@@ -1,6 +1,6 @@
 const {test,expect}=require('@playwright/test');
 
-test('synthetic patient → final note → linked prescription → timeline',async({page})=>{
+test('synthetic patient → final note → server-blocked prescription → timeline',async({page})=>{
   page.on('dialog',d=>d.accept(d.type()==='prompt'?'Tratamiento completado':undefined));
   await page.goto('/?e2e=1');
   await page.locator('#setupPin').fill('synthetic-test-123');
@@ -44,24 +44,23 @@ test('synthetic patient → final note → linked prescription → timeline',asy
 
   await page.locator('#rxFromNoteBtn').click();
   await page.locator('.m-name').fill('Paracetamol');await page.locator('.m-strength').fill('500 mg tabletas');await page.locator('.m-dose').fill('500 mg');await page.locator('.m-frequency').fill('Cada 8 horas si dolor o fiebre');await page.locator('.m-duration').fill('3 días');
-  await page.locator('#rxForm').getByRole('button',{name:'Emitir y sellar'}).click();await expect(page.locator('#confirmDialog')).toBeVisible();await page.locator('#confirmEmitBtn').click();
-  await expect(page.locator('#recipeDetail')).toContainText('Integridad local verificada');
-
+  await page.locator('#rxForm').getByRole('button',{name:'Emitir y sellar'}).click();
+  await expect(page.locator('#confirmDialog')).toBeVisible();await page.locator('#confirmEmitBtn').click();
+  await expect(page.locator('#rxSafetyStatus')).toContainText('validación transaccional en Neon');
+  await expect(page.locator('#recipeCount')).toHaveText('0');
+  await page.locator('#confirmDialog').locator('button').first().click();
   await page.locator('.bottom-nav [data-nav="emr"]').click();await page.locator('[data-open-record]').click();
-  await expect(page.locator('#patientRecord')).toContainText('Receta vinculada');
   await expect(page.locator('#patientRecord')).toContainText('Consultas recientes');
   await expect(page.locator('#patientRecord')).toContainText('Tos y odinofagia');
-  await expect(page.locator('.medication-summary')).toContainText('Paracetamol');
-  await page.locator('[data-stop-med]').click();
-  await expect(page.locator('.medication-summary')).toContainText('Suspendido');
+  await expect(page.locator('#patientRecord')).toContainText('0');
 });
 
-test('direct prescription remains available without creating an encounter',async({page})=>{
+test('commercial navigation starts a consultation, never a direct prescription',async({page})=>{
   await page.goto('/?e2e=1');
   await page.locator('#setupPin').fill('synthetic-test-456');await page.locator('#setupPin2').fill('synthetic-test-456');await page.getByRole('button',{name:'Crear bóveda cifrada'}).click();
-  await page.locator('#directRxHomeBtn').click();
-  await expect(page.locator('#screen-rx')).toHaveClass(/active/);
-  await expect(page.locator('#encounterCount')).toHaveText('0');
+  await expect(page.locator('#directRxHomeBtn, #recordDirectRx')).toHaveCount(0);
+  await page.locator('.bottom-nav [data-nav="rx"]').click();
+  await expect(page.locator('#screen-rx')).not.toHaveClass(/active/);
 });
 
 test('commercial shell has no manual prescription print flow',async({page})=>{
@@ -216,58 +215,26 @@ test('standalone quick note structures locally and remains outside the patient r
   await page.locator('#quickNoteReadBtn').click();await expect(page.locator('#quickNoteReadDialog')).toBeVisible();await expect(page.locator('#quickNoteReadText')).toContainText('Dolor lumbar');
 });
 
-test('direct prescription is searchable in the patient record and can seed a later note',async({page})=>{
-  page.on('dialog',d=>d.accept());
+test('patient search accepts birth date and local ICD catalog stays on device',async({page})=>{
   await page.goto('/?e2e=1');
-  await page.locator('#setupPin').fill('synthetic-link-rx-123');
-  await page.locator('#setupPin2').fill('synthetic-link-rx-123');
+  await page.locator('#setupPin').fill('synthetic-search-123');
+  await page.locator('#setupPin2').fill('synthetic-search-123');
   await page.getByRole('button',{name:'Crear bóveda cifrada'}).click();
-
-  await page.locator('#primaryNav [data-nav="settings"]').click();
-  await page.locator('#profileName').fill('Dra. Prueba Vinculación');
-  await page.locator('#profileLicense').fill('TEST-LINK-001');
-  await page.locator('#profileForm').getByRole('button',{name:'Guardar perfil'}).click();
-  const canvas=page.locator('#profileSignatureCanvas');
-  await canvas.scrollIntoViewIfNeeded();
-  const box=await canvas.boundingBox();
-  await page.mouse.move(box.x+35,box.y+75);await page.mouse.down();await page.mouse.move(box.x+190,box.y+30,{steps:8});await page.mouse.up();
-  await page.locator('#saveProfileSignature').click();
-
   await page.locator('#primaryNav [data-nav="patients"]').click();
   await page.locator('#newPatientBtn').click();
-  await page.locator('#patientName').fill('Paciente Receta Previa');
+  await page.locator('#patientName').fill('Paciente Fecha Sintética');
   await page.locator('#patientDob').fill('1988-07-18');
-  await page.locator('#patientSex').selectOption('M');
+  await page.locator('#patientAllergyStatus').selectOption('known');
+  await page.locator('#patientAllergies').fill('Penicilina: urticaria declarada');
+  await page.locator('#patientPathologicalHistory').fill('Antecedente sintético documentado');
   await page.locator('#patientForm').getByRole('button',{name:'Guardar paciente'}).click();
-  await page.locator('[data-rx-patient]').click();
-
-  await page.locator('.m-name').fill('Ibuprofeno');
-  await page.locator('.m-strength').fill('400 mg tabletas');
-  await page.locator('.m-dose').fill('400 mg');
-  await page.locator('.m-frequency').fill('Cada 8 horas con alimentos');
-  await page.locator('.m-duration').fill('3 días');
-  await page.locator('#rxForm').getByRole('button',{name:'Emitir y sellar'}).click();
-  await page.locator('#confirmEmitBtn').click();
-  await expect(page.locator('#recipeDetail')).toContainText('Integridad local verificada');
-  const rxId=(await page.locator('.recipe-detail-head .eyebrow').textContent()).trim();
-
-  await page.locator('#historySearch').fill('Paciente Receta Previa');
-  await expect(page.locator('#historyList')).toContainText(rxId);
-  await page.locator(`[data-recipe="${rxId}"]`).click();
-  await page.locator('#openRecipePatientBtn').click();
-  await expect(page.locator('#patientRecord')).toContainText('Receta directa');
-  await expect(page.locator('#patientRecord')).toContainText('Recetas sin nota');
-  await expect(page.locator('#patientRecord')).toContainText('Ibuprofeno');
-
-  await page.locator(`[data-link-recipe="${rxId}"]`).click();
-  await expect(page.locator('#encounterSourceRx')).toHaveValue(rxId);
-  await page.locator('#encounterStartForm').getByRole('button',{name:'Abrir expediente'}).click();
-  await expect(page.locator('.linked-rx-banner')).toContainText('Receta previa vinculada');
-  await expect(page.locator('.linked-rx-banner')).toContainText(rxId);
-
-  await page.locator('#primaryNav [data-nav="patients"]').click();
+  await page.locator('#patientSearch').fill('18/07/1988');
+  await expect(page.locator('#patientList')).toContainText('Paciente Fecha Sintética');
   await page.locator('[data-record-patient]').first().click();
-  await expect(page.locator('#patientRecord')).toContainText('Receta vinculada');
-  await expect(page.locator(`[data-link-recipe="${rxId}"]`)).toHaveCount(0);
+  await expect(page.locator('#patientRecord')).toContainText('Penicilina: urticaria declarada');
+  await expect(page.locator('#patientRecord')).toContainText('Antecedente sintético documentado');
+  await page.locator('#recordNewEncounter').click();
+  await page.locator('#encounterStartForm').getByRole('button',{name:'Abrir expediente'}).click();
+  await page.locator('[data-dx-search]').fill('I10');
+  await expect(page.locator('.dx-options').first()).toContainText('I10');
 });
-

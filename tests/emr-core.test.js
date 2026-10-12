@@ -10,7 +10,7 @@ test('commercial prescriptions require a signed final note for the same patient 
   assert.equal(policy.validatePrescription({mode:'saas',patientId:'p2',context,emr}).ok,false);
   assert.equal(policy.validatePrescription({mode:'saas',patientId:'p1',emr}).ok,false);
   assert.equal(policy.validatePrescription({mode:'saas',patientId:'p1',context,emr:{...emr,clinicalNotes:[{...emr.clinicalNotes[0],status:'draft'}]}}).ok,false);
-  assert.equal(policy.validatePrescription({mode:'personal',patientId:'p1',emr}).ok,true);
+  assert.equal(policy.validatePrescription({mode:'personal',patientId:'p1',emr}).ok,false);
 });
 
 test('prescription review reports textual allergy matches and duplicates without claiming pharmacological coverage',()=>{
@@ -43,7 +43,8 @@ test('canonical JSON is stable across object key order',()=>{
 test('validates minimum clinical finalization fields',()=>{
   const note={sections:{reasonForVisit:'Tos',currentIllness:'Tres días',physicalExam:'Alerta',assessment:'IRA probable',plan:'Manejo y vigilancia'}};
   assert.deepEqual(C.validateDraft(note,[{text:'Infección respiratoria aguda'}]),[]);
-  assert.ok(C.validateDraft({sections:{}},[]).length>=6);
+  assert.equal(C.validateDraft({sections:{}},[]).length,1);
+  assert.deepEqual(C.validateDraft({sections:{reasonForVisit:'Tos'}},[]),[]);
 });
 
 test('calculates BMI and emits non-blocking plausibility alerts',()=>{

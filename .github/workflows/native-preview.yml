@@ -1,0 +1,85 @@
+name: Clinovyra native preview · synthetic data only
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'app.js'
+      - 'emr*'
+      - 'styles.css'
+      - 'index.html'
+      - 'icd10-mx-inegi-2025.json'
+      - '.github/workflows/native-preview.yml'
+permissions:
+  contents: read
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci --no-audit --no-fund
+        working-directory: native
+      - run: npm run android:init
+        working-directory: native
+      - run: ./gradlew assembleDebug --no-daemon
+        working-directory: native/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clinovyra-android-debug-apk
+          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+  windows-portable:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: native
+      - run: npm run prepare:web
+        working-directory: native
+      - run: npx electron-builder --win portable --x64
+        working-directory: native
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clinovyra-windows-portable-unsigned
+          path: native/dist/*.exe
+          if-no-files-found: error
+  ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: native
+      - run: npm run ios:init
+        working-directory: native
+      - run: xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+        working-directory: native/ios/App
+      - run: ditto -c -k --sequesterRsrc --keepParent native/ios/App/build/Build/Products/Debug-iphonesimulator/App.app clinovyra-ios-simulator.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clinovyra-ios-simulator-unsigned
+          path: clinovyra-ios-simulator.zip
+          if-no-files-found: error

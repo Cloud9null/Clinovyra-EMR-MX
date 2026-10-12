@@ -1,19 +1,11 @@
-# Clinovyra EMR MX · base comercial en preparación
+# Clinovyra EMR MX · edición comercial en desarrollo
 
-Snapshot independiente del código de Clinovyra 3.6.1-rc.1. **No está autorizado para pacientes ni cuentas comerciales.** Conserva la interfaz, temas, navegación, EMR y recetas electrónicas como punto de partida. El talonario manual se retiró en la siguiente etapa comercial; la impresión electrónica está cerrada hasta que un servidor comercial confirme la receta. La función preliminar `product-policy.js` permanece desactivada mediante `edition='baseline'`; sus reglas SaaS no son decisiones de producto aprobadas.
+Repositorio independiente de Clinovyra. Snapshot inicial del commit personal aprobado `587e616e798cea4ad3a4a63a0545cd35a247b697`, con historial Git nuevo. Medivorix se consultó como referencia técnica y visual; las mejoras se adaptan a **Clinovyra**. Este código y los builds de vista previa son **solo para datos sintéticos** y no admiten cuentas comerciales ni atención de pacientes.
 
-Origen: `Cloud9null/Rx-Offline-medical-prescription`, rama `feat/clinovyra-native-emr`, commit `587e616e798cea4ad3a4a63a0545cd35a247b697`. El historial de este repositorio comienza de cero; no existe remoto, fork, mirror ni sincronización automática hacia el proyecto personal.
+La receta directa y la plantilla manual no forman parte de la edición comercial. Una receta nueva requiere consulta y nota finalizada y firmada; la API de emisión y anulación está cerrada (503) hasta integrar identidad, permisos y transacción de Neon. Ningún servidor personal recibe solicitudes de esta copia. El cliente conserva contratos antiguos de Supabase sin URL ni llave y sin sincronización operativa.
 
-## Estado de seguridad
+- Neon desarrollo: `clinovyra-emr-mx-development`, base `clinovyra_commercial`. La migración `0002` se probó con datos sintéticos en una rama temporal y todavía no se ha aplicado a la rama principal.
+- CI comercial: pruebas en `.github/workflows/ci.yml`; builds de vista previa Android, Windows e iOS simulador en `.github/workflows/native-preview.yml`. El ID temporal `mx.clinovyra.emr.preview` y los paquetes de prueba no son identidades ni firmas finales.
+- Verificación local: `npm ci && npm test && node scripts/check-isolation.mjs`. E2E: `npm run test:e2e` con Chromium de Playwright instalado.
 
-La configuración Supabase del cliente está vacía. Existe un proyecto Neon comercial de desarrollo con tablas cerradas por defecto, todavía sin Auth ni conexión del frontend. La función clínica responde 503 sin variables propias del proyecto comercial. Las apps nativas rechazan URL de verificación/API mientras no haya origen comercial. La política CSP bloquea conexiones externas por ahora. No se han copiado usuarios ni datos clínicos. El proyecto web comercial aún no debe desplegarse para uso clínico.
-
-Los IDs nativos son marcadores distintos a la edición personal, **no IDs de distribución definitivos**. No hay CI de APK, IPA ni EXE. El repositorio público expone el código fuente, de modo que nunca se deben subir respaldos, configuraciones locales, llaves, certificados ni datos reales.
-
-## Verificación local
-
-`npm ci && npm test && node scripts/check-isolation.mjs`
-
-El escaneo de aislamiento se ejecuta en CI. Las pruebas web no comprueban Face ID ni impresión física en iPhone.
-
-Consulta [estado de separación](docs/SEPARACION.md), [proyecto Neon de desarrollo](neon/README.md) y [landing conceptual](marketing/index.html).
+Consulta [avance, límites y pruebas](docs/AVANCE_COMERCIAL.md), [catálogo CIE-10](docs/CIE10_COMERCIAL.md), [aislamiento](docs/SEPARACION.md) y [Neon](neon/README.md).

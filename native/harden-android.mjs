@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=fileURLToPath(new URL('.',import.meta.url));
 const manifest=join(root,'android/app/src/main/AndroidManifest.xml');
-const activity=join(root,'android/app/src/main/java/mx/clinovyra/commercial/placeholder/MainActivity.java');
+const activity=join(root,'android/app/src/main/java/mx/clinovyra/emr/preview/MainActivity.java');
 let source=await readFile(manifest,'utf8');
 if(!/<application\b/.test(source))throw new Error('No se encontró el elemento application de Android.');
 source=source.replace(/\sandroid:allowBackup="[^"]*"/g,'');

@@ -1,6 +1,6 @@
 {
-  "appId": "mx.clinovyra.commercial.placeholder",
-  "appName": "Clinovyra Commercial Preview",
+  "appId": "mx.clinovyra.emr.preview",
+  "appName": "Clinovyra Vista Previa",
   "webDir": "www",
   "bundledWebRuntime": false
 }

@@ -10,7 +10,7 @@ const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=u
 const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'";
 protocol.registerSchemesAsPrivileged([{scheme:'app',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true}}]);
 
-function externalAllowed(raw){try{const u=new URL(raw);return u.protocol==='https:'&&(['www.gob.mx','www.cedulaprofesional.sep.gob.mx'].includes(u.hostname))}catch{return false}}
+function externalAllowed(raw){try{const u=new URL(raw);return u.protocol==='https:'&&(['www.gob.mx','www.cedulaprofesional.sep.gob.mx','www.inegi.org.mx'].includes(u.hostname))}catch{return false}}
 async function localResponse(request){
   const url=new URL(request.url);
   if(url.hostname!==HOST)return new Response('Forbidden',{status:403});

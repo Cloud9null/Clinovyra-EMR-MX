@@ -32,8 +32,8 @@
     "electron-builder": "26.0.12"
   },
   "build": {
-    "appId": "mx.clinovyra.commercial.placeholder",
-    "productName": "Clinovyra Commercial Preview",
+    "appId": "mx.clinovyra.emr.preview",
+    "productName": "Clinovyra Vista Previa",
     "directories": {
       "output": "dist"
     },

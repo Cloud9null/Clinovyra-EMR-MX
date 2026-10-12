@@ -106,14 +106,11 @@
   }
 
   function validateDraft(note,diagnoses=[]){
-    const errors=[];
-    if(!cleanText(note?.sections?.reasonForVisit,500))errors.push('Motivo de consulta');
-    if(!cleanText(note?.sections?.currentIllness))errors.push('Padecimiento actual');
-    if(!cleanText(note?.sections?.physicalExam))errors.push('Exploración física');
-    if(!diagnoses.some(d=>cleanText(d.text,500)))errors.push('Al menos un diagnóstico o problema clínico');
-    if(!cleanText(note?.sections?.assessment))errors.push('Razonamiento / impresión clínica');
-    if(!cleanText(note?.sections?.plan))errors.push('Plan e indicaciones');
-    return errors;
+    // La ausencia de un campo no equivale a un hallazgo negativo. Una nota vacía sí
+    // debe permanecer como borrador; el profesional decide qué apartados aplican.
+    const hasClinicalText=Object.values(note?.sections||{}).some(value=>Boolean(cleanText(value)));
+    const hasProblem=diagnoses.some(d=>Boolean(cleanText(d.text,500)));
+    return hasClinicalText||hasProblem?[]:['Documenta al menos un dato clínico antes de firmar'];
   }
 
   function noteSnapshot({encounter,note,patient,profile,diagnoses=[],observations=[],allergies=[],orders=[]}){
@@ -125,7 +122,7 @@
       author:{name:profile.name||'',role:profile.role||'',license:profile.license||''},
       facility:{type:profile.facilityType||'',name:profile.facilityName||'Consultorio médico',address:profile.address||''},
       sections:stable(note.sections||{}),
-      diagnoses:diagnoses.map(d=>({id:d.id,code:d.code||'',text:d.text||'',status:d.status||'working'})),
+      diagnoses:diagnoses.map(d=>({id:d.id,code:d.code||'',codingSystem:d.codingSystem||'CIE-10-MX-2025',text:d.text||'',status:d.status||'working'})),
       observations:observations.map(o=>stable(o)),
       allergies:allergies.map(a=>({substance:a.substance||'',reaction:a.reaction||'',severity:a.severity||'',status:a.status||'active'})),
       orders:orders.map(o=>({id:o.id,name:o.name||'',status:o.status||'ordered',result:o.result||'',resultedAt:o.resultedAt||''}))

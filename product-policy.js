@@ -4,12 +4,11 @@
   if(root)root.ClinovyraPolicy=api;
 })(typeof window!=='undefined'?window:globalThis,function(){
   'use strict';
-  // This snapshot preserves the original behavior. A commercial deployment
-  // must also enforce these rules in a tenant-scoped transaction on the server.
-  const edition='baseline';
+  // Commercial policy applies to every entry point, including imported vaults.
+  const edition='saas';
   function isCommercial(){return edition==='saas'}
   function validatePrescription({mode=edition,patientId,context,emr}={}){
-    if(mode!=='saas')return {ok:true};
+    if(mode!=='saas')return {ok:false,reason:'La edición comercial requiere validación de consulta y nota.'};
     if(!context?.noteId||!context?.encounterId||context.patientId!==patientId)return {ok:false,reason:'Finaliza una nota clínica de este paciente y emite la receta desde esa nota.'};
     const note=emr?.clinicalNotes?.find(n=>n.id===context.noteId&&n.encounterId===context.encounterId&&n.patientId===patientId);
     const encounter=emr?.encounters?.find(e=>e.id===context.encounterId&&e.patientId===patientId);

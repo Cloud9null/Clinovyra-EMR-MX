@@ -48,7 +48,7 @@ test('installable packages keep local assets and stable identities; Android rele
   const pkg=JSON.parse(fs.readFileSync(path.join(__dirname,'../native/package.json'),'utf8'));
   const harden=fs.readFileSync(path.join(__dirname,'../native/harden-android.mjs'),'utf8');
   const desktop=fs.readFileSync(path.join(__dirname,'../native/electron-main.cjs'),'utf8');
-  assert.equal(pkg.build.appId,'mx.clinovyra.commercial.placeholder');
+  assert.equal(pkg.build.appId,'mx.clinovyra.emr.preview');
   assert.match(desktop,/const HOST='clinovyra-commercial\.local'/);
   assert.match(desktop,/const ORIGIN=`app:\/\/\$\{HOST\}`/);
   assert.match(desktop,/win\.loadURL\(`\$\{ORIGIN\}\/index\.html`\)/);
