@@ -1,6 +1,7 @@
 node_modules/
 .next/
 web/public/clinical/
+web/public/workspace/
 out/
 test-results/
 playwright-report/

@@ -24,7 +24,7 @@ const lite = ['Pacientes y expedientes', 'Consultas y notas clínicas', 'Recetas
 const premium = ['Todo lo incluido en Lite', 'Borradores de notas asistidos por IA', 'Transcripción asistida para revisión', 'Herramientas de revisión clínica'];
 
 function Brand() {
-  return <a href="#inicio" className="brand" aria-label="Clinovyra, volver al inicio"><span className="brand-symbol"><span /></span><span>clino<span className="brand-accent">vyra</span><i>.</i></span></a>;
+  return <a href="#inicio" className="brand" aria-label="Clinovyra, volver al inicio"><img className="brand-symbol brand-image" src="/clinovyra.png" alt="" width="39" height="39"/><span>clino<span className="brand-accent">vyra</span><i>.</i></span></a>;
 }
 
 function Preview() {

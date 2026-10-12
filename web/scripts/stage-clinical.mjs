@@ -5,6 +5,7 @@ import { resolve, join } from 'node:path';
 // The root client is also the native app UI. Keep one implementation in Git.
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const out = join(root, 'web', 'public', 'clinical');
+const live = join(root, 'web', 'public', 'workspace');
 const files = [
   'index.html', 'styles.css', 'emr.css', 'app.js', 'runtime.js',
   'product-policy.js', 'native-print.js', 'native-biometric.js',
@@ -18,6 +19,8 @@ await mkdir(out, { recursive: true });
 for (const file of files) await copyFile(join(root, file), join(out, file));
 await cp(join(root, 'icons'), join(out, 'icons'), { recursive: true });
 await cp(join(root, 'assets'), join(out, 'assets'), { recursive: true });
+await rm(live, { recursive: true, force: true });
+await cp(out, live, { recursive: true });
 
 const index = join(out, 'index.html');
 const html = await readFile(index, 'utf8');
@@ -38,3 +41,13 @@ await writeFile(index, html.replace('</head>',
   '<link rel="stylesheet" href="web-demo.css"><script src="web-demo.js"></script></head>')
   .replace('<title>Clinovyra · EMR</title>', '<title>Clinovyra · Vista web de muestra</title>'));
 console.log(`Staged Clinovyra clinical preview: ${files.length} shared files`);
+await copyFile(join(root, 'web', 'scripts', 'clinical-web.js'), join(live, 'clinical-web.js'));
+await writeFile(join(live, 'clinical-web.css'), `
+  .cloud-card .owner-access-banner, .cloud-card form, .cloud-card .session-card,
+  .cloud-card .danger-zone, #enableBiometricBtn, #testBiometricBtn,
+  #disableBiometricBtn { display:none !important; }
+`);
+const liveIndex = join(live, 'index.html');
+const liveHtml = await readFile(liveIndex, 'utf8');
+await writeFile(liveIndex, liveHtml.replace('</head>',
+  '<link rel="stylesheet" href="clinical-web.css"><script src="clinical-web.js"></script></head>'));

@@ -67,9 +67,9 @@ async function encryptRaw(key,bytes){const iv=randomBytes(12),ct=await crypto.su
 async function decryptRaw(key,obj){return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(obj.iv)},key,unb64(obj.data)))}
 function openDb(){return new Promise((res,rej)=>{const r=indexedDB.open('clinovyraCommercialV1',2);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'id'});if(!db.objectStoreNames.contains('vault'))db.createObjectStore('vault',{keyPath:'id'});};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})}
 const demoStores={meta:new Map(),vault:new Map()};
-function dbGet(store,id){if(window.ClinovyraWebDemo===true)return Promise.resolve(demoStores[store].get(id)||null);return new Promise((res,rej)=>{const tx=state.db.transaction(store,'readonly'),r=tx.objectStore(store).get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);})}
-function dbPut(store,obj){if(window.ClinovyraWebDemo===true){demoStores[store].set(obj.id,obj);return Promise.resolve()}return new Promise((res,rej)=>{const tx=state.db.transaction(store,'readwrite'),r=tx.objectStore(store).put(obj);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);})}
-function replaceLocalBackup(meta,payload){if(window.ClinovyraWebDemo===true)throw new Error('La importación no está disponible en la vista de muestra.');return new Promise((res,rej)=>{const tx=state.db.transaction(['meta','vault'],'readwrite');tx.objectStore('meta').put(meta);tx.objectStore('vault').put(payload);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('No se pudo guardar el respaldo.'));})}
+function dbGet(store,id){if(window.ClinovyraWebApp===true)return window.ClinovyraWeb.get(store,id);if(window.ClinovyraWebDemo===true)return Promise.resolve(demoStores[store].get(id)||null);return new Promise((res,rej)=>{const tx=state.db.transaction(store,'readonly'),r=tx.objectStore(store).get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);})}
+function dbPut(store,obj){if(window.ClinovyraWebApp===true)return window.ClinovyraWeb.put(store,obj);if(window.ClinovyraWebDemo===true){demoStores[store].set(obj.id,obj);return Promise.resolve()}return new Promise((res,rej)=>{const tx=state.db.transaction(store,'readwrite'),r=tx.objectStore(store).put(obj);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);})}
+function replaceLocalBackup(meta,payload){if(window.ClinovyraWebApp===true)return window.ClinovyraWeb.replace(meta,payload);if(window.ClinovyraWebDemo===true)throw new Error('La importación no está disponible en la vista de muestra.');return new Promise((res,rej)=>{const tx=state.db.transaction(['meta','vault'],'readwrite');tx.objectStore('meta').put(meta);tx.objectStore('vault').put(payload);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('No se pudo guardar el respaldo.'));})}
 async function saveVault(){if(!state.vaultKey||!state.vault)return;const bytes=enc.encode(JSON.stringify(state.vault)),box=await encryptRaw(state.vaultKey,bytes);await dbPut('vault',{id:'payload',...box,updatedAt:new Date().toISOString()});}
 async function loadVault(key){const box=await dbGet('vault','payload');if(!box)throw new Error('No se encontró la bóveda.');const bytes=await decryptRaw(key,box);return JSON.parse(dec.decode(bytes))}
 async function keyFingerprint(publicJwk){const d=await sha256Bytes(`${publicJwk.x}.${publicJwk.y}`);return Array.from(d.slice(0,8)).map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{1,4}/g).join('-')}
@@ -255,6 +255,7 @@ function scheduleAccessCheck(){
   state.accessCheckTimer=setTimeout(async()=>{if(!state.vault)return;if(navigator.onLine){try{await validateCloudAccess()}catch(err){if(err?.status===403)return deauthorizeCurrentDevice('La sesión de este dispositivo fue revocada. Inicia sesión nuevamente para autorizarlo.')}}scheduleAccessCheck()},60000);
 }
 async function resolveInitialAccess(){
+  if(window.ClinovyraWebApp===true){const user=window.ClinovyraWeb.account();state.accessGranted=true;state.accessRole=user.role;state.accessOwnerHash=await ownerIdHash(user.user.id);state.cloudUser=user.user;state.cloudSyncState='synced';updateCloudUI();return showAuth(state.meta?'unlock':'setup')}
   if(window.ClinovyraWebDemo===true){
     state.testAccess=true;state.accessGranted=true;state.accessRole='demo';state.accessOwnerHash='synthetic-demo';
     await setupVault('ClinovyraDemoOnly2026');
@@ -294,6 +295,7 @@ async function initCloudState(){
   try{const r=await window.RxCloud.init();state.cloudReady=!!r.configured;state.cloudUser=r.user||null;updateCloudUI()}catch(err){console.warn(err);state.cloudReady=false;updateCloudUI(err.message)}
 }
 function updateCloudUI(message=''){
+  if(window.ClinovyraWebApp===true){const email=state.cloudUser?.email||'Cuenta médica';$('#cloudStatus').textContent='Neon · bóveda cifrada por cuenta';$('#cloudLoginWrap')?.classList.add('hidden');$('#cloudSignedWrap')?.classList.add('hidden');$('#offlineBadge').textContent=navigator.onLine?'● Neon':'● Sin conexión';$('#ownerAccessStatus').textContent=`${email} · ${state.accessRole==='owner'?'propietario':'médico'}`;$('#navUserLabel').textContent=email;return}
   if(window.ClinovyraWebDemo===true){
     $('#cloudStatus').textContent='Vista de muestra · sin cuenta, sincronización ni datos persistentes.';
     $('#cloudLoginWrap')?.classList.add('hidden');$('#cloudSignedWrap')?.classList.add('hidden');
@@ -369,6 +371,7 @@ async function runCloudSync({quiet=false}={}){
   }
 }
 function queueCloudSync(){
+  if(window.ClinovyraWebApp===true){state.cloudSyncState='synced';updateCloudUI();setStatus($('#cloudSyncStatus'),'Bóveda cifrada guardada en Neon.',true);return}
   clearTimeout(state.cloudSyncTimer);
   state.cloudSyncState='pending';state.cloudSyncError='';updateCloudUI();
   const el=$('#cloudSyncStatus');
@@ -390,6 +393,7 @@ async function afterUnlock(){
   renderAll();
   navigate('home');
   scheduleLock();
+  if(window.ClinovyraWebApp===true){window.ClinovyraWeb.decorate();updateCloudUI();setStatus($('#cloudSyncStatus'),'Bóveda cifrada disponible en Neon.',true);clearTimeout(state.accessCheckTimer);const recheck=async()=>{if(!state.vault)return;try{await window.ClinovyraWeb.checkSession()}catch(err){lock();location.replace('/sign-in');return}state.accessCheckTimer=setTimeout(recheck,60000)};state.accessCheckTimer=setTimeout(recheck,60000);return}
   await initCloudState();
   if(state.cloudUser){
     try{await validateCloudAccess();scheduleAccessCheck();setStatus($('#cloudSyncStatus'),'Sesión de nube restaurada · sincronizando…');if(navigator.onLine)await runCloudSync({quiet:true});else updateCloudUI()}
@@ -446,7 +450,7 @@ function matchesPatient(p,query){const term=patientSearchKey(query);if(!term)ret
 function renderPatients(filter=''){
   const arr=state.vault.patients.filter(p=>!p.archived&&matchesPatient(p,filter)).sort((a,b)=>a.name.localeCompare(b.name));
   const list=$('#patientList');
-  if(!arr.length){const cloudEmpty=!filter&&!state.vault.patients.length&&state.cloudUser;list.innerHTML=cloudEmpty?`<div class="empty-state"><p>${state.cloudSyncState==='synced'?'No hay pacientes en esta cuenta.':'No hay pacientes en este dispositivo. La nube aún no confirmó la sincronización.'}</p><button type="button" class="btn ghost" id="retryPatientsSync">Sincronizar pacientes</button></div>`:'<div class="empty-state">No hay pacientes que coincidan. Usa “Alta paciente” para comenzar.</div>';list.querySelector('#retryPatientsSync')?.addEventListener('click',()=>runCloudSync({quiet:false}));return;}
+  if(!arr.length){const cloudEmpty=!window.ClinovyraWebApp&&!filter&&!state.vault.patients.length&&state.cloudUser;list.innerHTML=cloudEmpty?`<div class="empty-state"><p>${state.cloudSyncState==='synced'?'No hay pacientes en esta cuenta.':'No hay pacientes en este dispositivo. La nube aún no confirmó la sincronización.'}</p><button type="button" class="btn ghost" id="retryPatientsSync">Sincronizar pacientes</button></div>`:'<div class="empty-state">No hay pacientes que coincidan. Usa “Alta paciente” para comenzar.</div>';list.querySelector('#retryPatientsSync')?.addEventListener('click',()=>runCloudSync({quiet:false}));return;}
   list.innerHTML=arr.map(p=>{
     const recent=(state.vault.emr?.encounters||[]).filter(e=>e.patientId===p.id).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||'')))[0];
     return `<article class="list-item patient-list-card"><div class="avatar" aria-hidden="true">${esc(initials(p.name))}</div><div class="list-main"><button type="button" class="patient-name-link" data-record-patient="${esc(p.id)}">${esc(p.name)} <span aria-hidden="true">↗</span></button><small>${esc(patientSubtitle(p))}</small><small>${recent?`Última consulta: ${esc(displayDob(String(recent.occurredAt||'').slice(0,10)))}`:'Sin consultas registradas'}</small></div><div class="list-actions"><button type="button" data-record-patient="${esc(p.id)}">▤ <span>Ver perfil</span></button><button type="button" data-consult-patient="${esc(p.id)}">＋ <span>Nueva consulta</span></button><button type="button" data-edit-patient="${esc(p.id)}">✎ <span>Editar datos</span></button></div></article>`;
@@ -621,8 +625,8 @@ function bindEvents(){
 }
 function initPlatformUi(){const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent),standalone=window.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true,native=window.ClinovyraRuntime?.nativeOrigin();document.documentElement.classList.toggle('ios-device',ios);document.documentElement.classList.toggle('ios-pwa',ios&&(standalone||native));document.documentElement.classList.toggle('native-shell',!!native)}
 async function init(){
-  if(!window.crypto?.subtle||!window.indexedDB){alert('Este navegador no ofrece las APIs criptográficas/almacenamiento necesarias. Usa Safari/Chrome moderno mediante HTTPS.');return;}
-  initPlatformUi();applyTheme('midnightGold');state.db=window.ClinovyraWebDemo===true?null:await openDb();state.meta=await dbGet('meta','setup');state.profilePad=new SignaturePad($('#profileSignatureCanvas'));state.rxPad=new SignaturePad($('#rxSignatureCanvas'));bindEvents();if(window.ClinovyraWebDemo!==true&&!window.ClinovyraRuntime?.nativeOrigin()&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});$('#biometricUnlockBtn').classList.toggle('hidden',!state.meta?.biometric||nativeBiometricUnsupported());await resolveInitialAccess();
+  if(!window.crypto?.subtle||(!window.ClinovyraWebApp&&!window.indexedDB)){alert('Este navegador no ofrece las APIs criptográficas/almacenamiento necesarias. Usa Safari/Chrome moderno mediante HTTPS.');return;}
+  initPlatformUi();applyTheme('midnightGold');state.db=(window.ClinovyraWebDemo===true||window.ClinovyraWebApp===true)?null:await openDb();if(window.ClinovyraWebApp===true)await window.ClinovyraWeb.init();state.meta=await dbGet('meta','setup');state.profilePad=new SignaturePad($('#profileSignatureCanvas'));state.rxPad=new SignaturePad($('#rxSignatureCanvas'));bindEvents();if(!window.ClinovyraWebApp&&window.ClinovyraWebDemo!==true&&!window.ClinovyraRuntime?.nativeOrigin()&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});$('#biometricUnlockBtn').classList.toggle('hidden',!state.meta?.biometric||nativeBiometricUnsupported());await resolveInitialAccess();
   window.addEventListener('online',()=>{updateCloudUI();if(state.vault&&state.cloudUser){queueCloudSync();scheduleAccessCheck()}});window.addEventListener('offline',()=>updateCloudUI());
 }
 init().catch(err=>{console.error(err);alert('Error al iniciar Rx Offline: '+err.message)});
