@@ -2,7 +2,8 @@ import './styles.css';
 
 export const metadata = {
   title: 'Clinovyra | Espacio clínico',
-  description: 'Acceso web al expediente clínico electrónico Clinovyra.'
+  description: 'Acceso web al expediente clínico electrónico Clinovyra.',
+  robots: { index: false, follow: false }
 };
 
 export default function RootLayout({ children }) {
