@@ -23,6 +23,14 @@ export async function withClinical(user, callback) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Neon API-created roles can inherit neon_superuser/BYPASSRLS. Refuse to
+    // handle any clinical request unless this is the SQL-created runtime role.
+    const { rows: [databaseRole] } = await client.query(
+      "SELECT current_user AS name, rolbypassrls AS bypasses_rls, rolsuper AS superuser FROM pg_roles WHERE rolname = current_user"
+    );
+    if (databaseRole?.name !== 'clinovyra_runtime' || databaseRole.bypasses_rls || databaseRole.superuser) {
+      throw new ClinicalError('Acceso clínico deshabilitado mientras se valida el aislamiento de datos.', 503);
+    }
     await client.query("SELECT set_config('app.user_id', $1, true), set_config('app.user_email', $2, true)", [user.id, user.email]);
     const result = await callback(client);
     await client.query('COMMIT');
